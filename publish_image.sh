@@ -15,6 +15,7 @@ usage() {
   echo "  -t, --tag <tag>          Additional custom tag to push"
   echo "  -r, --registry <url>     Target container registry (default: $DEFAULT_REGISTRY)"
   echo "  -s, --skip-verification  Skip running verify_image.sh before pushing"
+  echo "  -f, --rebuild, --force   Force a clean rebuild with --no-cache"
   echo "  -h, --help               Show this help message"
   exit "${1:-1}"
 }
@@ -24,6 +25,7 @@ NAMESPACE="$DEFAULT_NAMESPACE"
 CUSTOM_TAG=""
 REGISTRY="$DEFAULT_REGISTRY"
 SKIP_VERIFICATION=false
+REBUILD=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +45,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_VERIFICATION=true
       shift
       ;;
+    -f|--rebuild|--force)
+      REBUILD=true
+      shift
+      ;;
     -h|--help)
       usage 0
       ;;
@@ -53,11 +59,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# 1. Check if the local image exists, build it if not
-if ! docker image inspect "${LOCAL_IMAGE}" >/dev/null 2>&1; then
-  echo "Local image ${LOCAL_IMAGE} not found."
-  echo "Building it now..."
-  docker build -t "${LOCAL_IMAGE}" .
+# 1. Build/rebuild the local image
+if [ "$REBUILD" = true ]; then
+  echo "=== Rebuilding the image from scratch ==="
+  echo "Performing a clean build of ${LOCAL_IMAGE}..."
+  docker build --pull --no-cache -t "${LOCAL_IMAGE}" .
+else
+  echo "=== Ensuring the image is built and up-to-date ==="
+  echo "Building ${LOCAL_IMAGE} (pulling base image if updated)..."
+  docker build --pull -t "${LOCAL_IMAGE}" .
 fi
 
 # 2. Verify image first (unless skipped)

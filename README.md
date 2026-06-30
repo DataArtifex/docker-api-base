@@ -67,6 +67,43 @@ To build the Docker image locally, ensure you have first built the base image (`
 docker build -t dartfx/docker-api-base:latest .
 ```
 
+### Rebuilding After Base Image Updates
+
+If the underlying base image (`dartfx/docker-base:latest`) has been updated, you must rebuild this image to inherit those changes.
+
+#### Scenario A: Base Image Updated Locally (Sibling Directory)
+If you updated the sibling `docker-base` image locally, rebuild it first, then rebuild this image:
+1. **Rebuild the base image:**
+   ```bash
+   # From the sibling docker-base directory
+   docker build -t dartfx/docker-base:latest .
+   ```
+2. **Rebuild the API base image:**
+   You can either run the publishing script with the `--rebuild` flag:
+   ```bash
+   # From this directory (docker-api-base)
+   ./publish_image.sh --rebuild
+   ```
+   Or rebuild it manually without cache:
+   ```bash
+   # From this directory (docker-api-base)
+   docker build --no-cache -t dartfx/docker-api-base:latest .
+   ```
+
+#### Scenario B: Base Image Updated Remotely (Docker Hub)
+If the base image was updated on the remote registry, the `publish_image.sh` script automatically pulls the latest base image during every execution:
+```bash
+./publish_image.sh
+```
+If you need to force a clean rebuild without using the cache:
+```bash
+./publish_image.sh --rebuild
+```
+Alternatively, to do it manually:
+```bash
+docker build --pull --no-cache -t dartfx/docker-api-base:latest .
+```
+
 ### Verifying the Image
 
 A script is provided to verify the image. It checks that system utilities (like `qsv`) remain available, verifies that Python packages (`fastapi`, `uvicorn`, `dartfx.utils`) are importable, and spins up a temporary container to confirm the mock API is successfully responding to HTTP requests on port 8099.
@@ -118,7 +155,7 @@ docker run --rm -it dartfx/docker-api-base:latest /bin/bash
 ### Publishing the Image
 
 A utility script `publish_image.sh` is provided to automate tagging and pushing the image to Docker Hub (or another container registry). By default, the script:
-1. Ensures the local image exists (builds it if not).
+1. Performs a local build of the image, automatically pulling the latest base image version (`--pull`).
 2. Verifies the image locally using `./verify_image.sh` to make sure all checks pass.
 3. Extracts the version string from [pyproject.toml](file:///Users/pascal/Library/CloudStorage/Dropbox/git-dartfx/docker-api-base/pyproject.toml) (e.g. `0.1.0`).
 4. Tags the image with both `latest` and the version tag.
@@ -160,7 +197,8 @@ Options:
   -t, --tag <tag>          Additional custom tag to push
   -r, --registry <url>     Target container registry (default: docker.io)
   -s, --skip-verification  Skip running verify_image.sh before pushing
-  -h, --help               Show usage help
+  -f, --rebuild, --force   Force a clean rebuild with --no-cache
+  -h, --help               Show this help message
 ```
 
 ## Usage in a FastAPI Project
