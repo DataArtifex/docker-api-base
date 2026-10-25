@@ -4,12 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dartfx-docker-api-base"
-version = "0.1.0"
+version = "0.2.0"
 license = { text = "MIT" }
-dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-]
+dependencies = ["fastapi", "uvicorn[standard]"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
